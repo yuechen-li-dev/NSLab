@@ -1,5 +1,6 @@
-using NSLab.Core;
 using System.CommandLine;
+using System.Diagnostics;
+using NSLab.Core;
 
 namespace NSLab.Cli;
 
@@ -9,7 +10,7 @@ public static class CliApp
     {
         var root = new RootCommand("nslab");
 
-        root.Subcommands.Add(CreateStubCommand("run"));
+        root.Subcommands.Add(CreateRunCommand());
         root.Subcommands.Add(CreateStubCommand("summarize"));
         root.Subcommands.Add(CreateValidateCommand());
 
@@ -23,6 +24,76 @@ public static class CliApp
         {
             Console.WriteLine("Not implemented");
             return ExitCodes.RuntimeError;
+        });
+
+        return command;
+    }
+
+    private static Command CreateRunCommand()
+    {
+        var scenarioPathArgument = new Argument<string>("scenario.json");
+        var outOption = new Option<string>("--out") { Required = true };
+        var command = new Command("run");
+        command.Arguments.Add(scenarioPathArgument);
+        command.Options.Add(outOption);
+
+        command.SetAction(parseResult =>
+        {
+            var scenarioPath = parseResult.GetValue(scenarioPathArgument)!;
+            var runDir = parseResult.GetValue(outOption)!;
+
+            var scenarioJsonText = File.ReadAllText(scenarioPath);
+            var (scenario, validation) = ScenarioV0Parser.ParseAndValidate(scenarioJsonText);
+            if (!validation.IsValid)
+            {
+                foreach (var issue in validation.Issues)
+                {
+                    Console.WriteLine($"{issue.Code} {issue.Path} {issue.Message}");
+                }
+
+                return ExitCodes.ValidationError;
+            }
+
+            var runId = RunId.FromScenarioJson(scenarioJsonText);
+            EvidencePackWriter.InitializeRunFolder(runDir);
+
+            var startedUtc = DateTimeOffset.UtcNow;
+            var stopwatch = Stopwatch.StartNew();
+            var solverResult = NullSolver.Execute(scenario!);
+            stopwatch.Stop();
+
+            var timeseriesPath = Path.Combine(runDir, RunFolderSpec.TimeseriesCsv);
+            foreach (var row in solverResult.Rows)
+            {
+                TimeseriesCsv.AppendRow(timeseriesPath, row);
+            }
+
+            var info = new EvidenceRunInfo(
+                runId,
+                "null",
+                startedUtc,
+                (int)stopwatch.ElapsedMilliseconds,
+                Environment.OSVersion.ToString(),
+                "OK",
+                null);
+
+            var summary = new SummaryV0Document(
+                EvidenceSchemaVersions.SummaryV0,
+                scenario!.Experiment,
+                runId,
+                "null",
+                "OK",
+                string.Empty,
+                solverResult.MaxOmegaInf,
+                solverResult.TAtMaxOmegaInf,
+                solverResult.MaxZ,
+                solverResult.MaxE,
+                solverResult.MaxOmegaInf);
+
+            EvidencePackWriter.WriteMetadata(runDir, scenario, info);
+            EvidencePackWriter.WriteSummary(runDir, scenario, summary);
+
+            return ExitCodes.Ok;
         });
 
         return command;
