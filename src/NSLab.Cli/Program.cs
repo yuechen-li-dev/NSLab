@@ -11,22 +11,10 @@ public static class CliApp
         var root = new RootCommand("nslab");
 
         root.Subcommands.Add(CreateRunCommand());
-        root.Subcommands.Add(CreateStubCommand("summarize"));
+        root.Subcommands.Add(CreateSummarizeCommand());
         root.Subcommands.Add(CreateValidateCommand());
 
         return root;
-    }
-
-    private static Command CreateStubCommand(string name)
-    {
-        var command = new Command(name);
-        command.SetAction(_ =>
-        {
-            Console.WriteLine("Not implemented");
-            return ExitCodes.RuntimeError;
-        });
-
-        return command;
     }
 
     private static Command CreateRunCommand()
@@ -80,6 +68,7 @@ public static class CliApp
             var summary = new SummaryV0Document(
                 EvidenceSchemaVersions.SummaryV0,
                 scenario!.Experiment,
+                string.Empty,
                 runId,
                 "null",
                 "OK",
@@ -99,25 +88,69 @@ public static class CliApp
         return command;
     }
 
-    private static Command CreateValidateCommand()
+    private static Command CreateSummarizeCommand()
     {
-        var scenarioPathArgument = new Argument<string>("scenario.json");
-        var command = new Command("validate");
-        command.Arguments.Add(scenarioPathArgument);
+        var runDirArgument = new Argument<string>("run_dir");
+        var command = new Command("summarize");
+        command.Arguments.Add(runDirArgument);
 
         command.SetAction(parseResult =>
         {
-            var scenarioPath = parseResult.GetValue(scenarioPathArgument);
-            var jsonText = File.ReadAllText(scenarioPath!);
+            var runDir = parseResult.GetValue(runDirArgument)!;
+            try
+            {
+                var summary = EvidencePackSummarizer.EnsureSummary(runDir);
+                Console.WriteLine(
+                    $"run_id={summary.RunId} solver_id={summary.SolverId} status={summary.Status} severity={summary.SeverityScoreV0:G17} max_omega_inf={summary.MaxOmegaInf:G17} t_at_max_omega_inf={summary.TAtMaxOmegaInf:G17}");
+                return ExitCodes.Ok;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"InvalidValue /run_dir {ex.Message}");
+                return ExitCodes.ValidationError;
+            }
+        });
 
-            var (_, result) = ScenarioV0Parser.ParseAndValidate(jsonText);
-            if (result.IsValid)
+        return command;
+    }
+
+    private static Command CreateValidateCommand()
+    {
+        var pathArgument = new Argument<string>("scenario.json");
+        var command = new Command("validate");
+        command.Arguments.Add(pathArgument);
+
+        command.SetAction(parseResult =>
+        {
+            var inputPath = parseResult.GetValue(pathArgument)!;
+
+            if (inputPath.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                var jsonText = File.ReadAllText(inputPath);
+
+                var (_, result) = ScenarioV0Parser.ParseAndValidate(jsonText);
+                if (result.IsValid)
+                {
+                    Console.WriteLine("OK");
+                    return ExitCodes.Ok;
+                }
+
+                foreach (var issue in result.Issues)
+                {
+                    Console.WriteLine($"{issue.Code} {issue.Path} {issue.Message}");
+                }
+
+                return ExitCodes.ValidationError;
+            }
+
+            var runResult = EvidencePackValidator.ValidateRunFolder(inputPath);
+            if (runResult.IsValid)
             {
                 Console.WriteLine("OK");
                 return ExitCodes.Ok;
             }
 
-            foreach (var issue in result.Issues)
+            foreach (var issue in runResult.Issues)
             {
                 Console.WriteLine($"{issue.Code} {issue.Path} {issue.Message}");
             }

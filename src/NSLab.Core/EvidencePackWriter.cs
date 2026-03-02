@@ -49,6 +49,7 @@ public static class EvidencePackWriter
         return new SummaryV0Document(
             EvidenceSchemaVersions.SummaryV0,
             scenario.Experiment,
+            string.Empty,
             info.RunId,
             info.SolverId,
             info.Status,
