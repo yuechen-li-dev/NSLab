@@ -32,6 +32,20 @@ public class ScaffoldingTests
         Assert.Equal(3, ExitCodes.RuntimeError);
     }
 
+
+    [Fact]
+    public void Cli_Command_Set_IsStable()
+    {
+        var commandNames = NSLab.Cli.CliApp
+            .BuildRootCommand()
+            .Subcommands
+            .Select(command => command.Name)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(new[] { "run", "summarize", "validate" }, commandNames);
+    }
+
     [Fact]
     public async Task Cli_Help_Includes_Commands()
     {
