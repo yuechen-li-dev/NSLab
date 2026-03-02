@@ -15,9 +15,6 @@ public static class EvidencePackSummarizer
 
         var runId = metadata.GetProperty("run_id").GetString() ?? string.Empty;
         var solverId = metadata.GetProperty("solver_id").GetString() ?? string.Empty;
-        var status = metadata.GetProperty("status").GetString() ?? string.Empty;
-        var reason = metadata.GetProperty("reason").GetString() ?? string.Empty;
-
         var scenario = metadata.GetProperty("scenario");
         var experiment = scenario.GetProperty("experiment");
         var trace = new ExperimentTrace(
@@ -40,6 +37,7 @@ public static class EvidencePackSummarizer
         var tAtMaxOmegaInf = 0d;
         var maxZ = double.MinValue;
         var maxE = double.MinValue;
+        var rows = new List<TimeseriesRow>();
 
         for (var i = 1; i < lines.Length; i++)
         {
@@ -58,6 +56,12 @@ public static class EvidencePackSummarizer
             var e = double.Parse(parts[1], CultureInfo.InvariantCulture);
             var z = double.Parse(parts[2], CultureInfo.InvariantCulture);
             var omegaInf = double.Parse(parts[3], CultureInfo.InvariantCulture);
+            var divL2 = double.Parse(parts[4], CultureInfo.InvariantCulture);
+            var dt = double.Parse(parts[5], CultureInfo.InvariantCulture);
+            var cfl = double.Parse(parts[6], CultureInfo.InvariantCulture);
+            var rowStatus = parts[7];
+
+            rows.Add(new TimeseriesRow(t, e, z, omegaInf, divL2, dt, cfl, rowStatus));
 
             if (omegaInf > maxOmegaInf)
             {
@@ -81,19 +85,24 @@ public static class EvidencePackSummarizer
             throw new InvalidDataException("Timeseries must include at least one non-empty data row.");
         }
 
+        var (severity, healthStatus) = SeverityScorerV0.Compute(rows);
+        var reason = string.Equals(healthStatus, HealthStatus.OK, StringComparison.Ordinal)
+            ? string.Empty
+            : healthStatus;
+
         return new SummaryV0Document(
             EvidenceSchemaVersions.SummaryV0,
             trace,
             string.Empty,
             runId,
             solverId,
-            status,
+            healthStatus,
             reason,
             maxOmegaInf,
             tAtMaxOmegaInf,
             maxZ,
             maxE,
-            maxOmegaInf);
+            severity);
     }
 
     public static SummaryV0Document EnsureSummary(string runDir)

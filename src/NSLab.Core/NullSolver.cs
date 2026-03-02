@@ -23,7 +23,7 @@ public static class NullSolver
             var omega = baseOmega + Math.Sin(t * 2.0) * 0.1;
             var e = 1.0 + 0.01 * i;
             var z = 0.5 + 0.02 * i;
-            rows.Add(new TimeseriesRow(t, e, z, omega, 0.0, dt, scenario.Time.Cfl, "OK"));
+            rows.Add(new TimeseriesRow(t, e, z, omega, 0.0, dt, scenario.Time.Cfl, HealthStatus.OK));
         }
 
         var maxOmega = double.MinValue;

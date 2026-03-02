@@ -56,13 +56,18 @@ public static class CliApp
                 TimeseriesCsv.AppendRow(timeseriesPath, row);
             }
 
+            var (severity, healthStatus) = SeverityScorerV0.Compute(solverResult.Rows);
+            var summaryReason = string.Equals(healthStatus, HealthStatus.OK, StringComparison.Ordinal)
+                ? string.Empty
+                : healthStatus;
+
             var info = new EvidenceRunInfo(
                 runId,
                 "null",
                 startedUtc,
                 (int)stopwatch.ElapsedMilliseconds,
                 Environment.OSVersion.ToString(),
-                "OK",
+                HealthStatus.OK,
                 null);
 
             var summary = new SummaryV0Document(
@@ -71,13 +76,13 @@ public static class CliApp
                 string.Empty,
                 runId,
                 "null",
-                "OK",
-                string.Empty,
+                healthStatus,
+                summaryReason,
                 solverResult.MaxOmegaInf,
                 solverResult.TAtMaxOmegaInf,
                 solverResult.MaxZ,
                 solverResult.MaxE,
-                solverResult.MaxOmegaInf);
+                severity);
 
             EvidencePackWriter.WriteMetadata(runDir, scenario, info);
             EvidencePackWriter.WriteSummary(runDir, scenario, summary);
