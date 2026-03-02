@@ -11,7 +11,7 @@ public static class CliApp
 
         root.Subcommands.Add(CreateStubCommand("run"));
         root.Subcommands.Add(CreateStubCommand("summarize"));
-        root.Subcommands.Add(CreateStubCommand("validate"));
+        root.Subcommands.Add(CreateValidateCommand());
 
         return root;
     }
@@ -23,6 +23,35 @@ public static class CliApp
         {
             Console.WriteLine("Not implemented");
             return ExitCodes.RuntimeError;
+        });
+
+        return command;
+    }
+
+    private static Command CreateValidateCommand()
+    {
+        var scenarioPathArgument = new Argument<string>("scenario.json");
+        var command = new Command("validate");
+        command.Arguments.Add(scenarioPathArgument);
+
+        command.SetAction(parseResult =>
+        {
+            var scenarioPath = parseResult.GetValue(scenarioPathArgument);
+            var jsonText = File.ReadAllText(scenarioPath!);
+
+            var (_, result) = ScenarioV0Parser.ParseAndValidate(jsonText);
+            if (result.IsValid)
+            {
+                Console.WriteLine("OK");
+                return ExitCodes.Ok;
+            }
+
+            foreach (var issue in result.Issues)
+            {
+                Console.WriteLine($"{issue.Code} {issue.Path} {issue.Message}");
+            }
+
+            return ExitCodes.ValidationError;
         });
 
         return command;
