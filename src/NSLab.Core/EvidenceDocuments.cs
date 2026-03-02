@@ -15,6 +15,7 @@ public sealed record EvidenceRunInfo(
 public sealed record SummaryV0Document(
     [property: JsonPropertyName("schema_version")] string SchemaVersion,
     [property: JsonPropertyName("experiment")] ExperimentTrace Experiment,
+    [property: JsonPropertyName("block")] string Block,
     [property: JsonPropertyName("run_id")] string RunId,
     [property: JsonPropertyName("solver_id")] string SolverId,
     [property: JsonPropertyName("status")] string Status,

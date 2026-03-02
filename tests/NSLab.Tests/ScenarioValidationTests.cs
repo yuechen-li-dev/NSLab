@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using NSLab.Core;
 
 namespace NSLab.Tests;
@@ -55,7 +56,7 @@ public class ScenarioValidationTests
     [Fact]
     public async Task Cli_Validate_Returns_0_On_Valid_File()
     {
-        var file = Path.GetTempFileName();
+        var file = Path.Combine(Path.GetTempPath(), "nslab-scenario-" + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture) + ".json");
         await File.WriteAllTextAsync(file, ValidScenarioJson());
 
         try
@@ -73,7 +74,7 @@ public class ScenarioValidationTests
     [Fact]
     public async Task Cli_Validate_Returns_2_On_Invalid_File()
     {
-        var file = Path.GetTempFileName();
+        var file = Path.Combine(Path.GetTempPath(), "nslab-scenario-" + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture) + ".json");
         await File.WriteAllTextAsync(file, ValidScenarioJson().Replace("\"solver\": \"null\",\n", string.Empty, StringComparison.Ordinal));
 
         try
