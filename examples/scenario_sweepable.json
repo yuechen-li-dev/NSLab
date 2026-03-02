@@ -1,0 +1,42 @@
+{
+  "schema_version": "nslab.scenario.v0",
+  "experiment": {
+    "llm_name": "ExampleLLM",
+    "run_number": 1,
+    "utc_timestamp": "2026-03-01T00:00:00Z"
+  },
+  "solver": "null",
+  "domain": {
+    "type": "periodic_box",
+    "L": [6.283185307179586, 6.283185307179586]
+  },
+  "resolution": {
+    "N": [128, 128]
+  },
+  "time": {
+    "t_end": 1.0,
+    "cfl": 0.4,
+    "max_steps": 200000
+  },
+  "physics": {
+    "nu": 0.001
+  },
+  "initial_condition": {
+    "type": "smooth_random_vorticity_bandlimited",
+    "params": {
+      "k0": 6,
+      "k1": 12,
+      "amplitude": 1.0,
+      "note": "edit k0 k1 amplitude seed run_number and timestamp"
+    }
+  },
+  "numerics": {
+    "advection": "spectral_dealiased_2_3",
+    "integrator": "rk3"
+  },
+  "outputs": {
+    "timeseries_dt": 0.01,
+    "snapshots": [0.0, 0.5, 1.0]
+  },
+  "seed": 1337
+}
