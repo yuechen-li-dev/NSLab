@@ -1,5 +1,7 @@
 # NSLab
 
+Retired in favor of Oct, for which this project inspired.
+
 Build:
 
 ```bash
